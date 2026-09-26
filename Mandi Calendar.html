@@ -1,0 +1,740 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Mandi Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap">
+<style>
+  /* Single dark look, on purpose — every colour set explicitly.
+     GROUND    Charcoal     #2C2C2C — the page it all sits on
+     PRIMARY   Cream        #F3E8CC — all text and structure
+     SUPPORT   Forest Green (lifted to #8CC08A on charcoal) — "in season"
+     ACCENT    Tomato       #D42518 (lifted to #EE5539) — action and urgency only */
+  :root{
+    color-scheme: dark;
+    --bg:#2C2C2C; --surface:#353535; --surface-2:#3E3E3E;
+    --ink:#F3E8CC; --muted:#A49C88; --line:#464646;
+    --accent:#EE5539; --accent-ink:#2C2C2C;
+    --peak:#8CC08A; --peak-bg:#24352A;
+    --last:#F0705A; --last-bg:#3E231D;
+    --soon:#8CC08A; --soon-bg:#24352A;
+    --art-bg:#383838;
+    --leaf:#4E9B5C; --stem:#8A9B7A;
+    --radius:10px;
+    --display:"Manrope","Helvetica Neue",Arial,sans-serif;
+    --body:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  [hidden]{display:none!important;}
+  html,body{margin:0;}
+  img{max-width:100%;}
+  svg{--lf:var(--leaf);--st:var(--stem);}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1;}
+  a{color:inherit;}
+  .wrap{max-width:1060px;margin:0 auto;padding-inline:20px;padding-block:0 56px;}
+
+  .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);}
+  .bar-in{max-width:1060px;margin:0 auto;padding-inline:20px;padding-block:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .mark{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;margin-right:auto;background:none;border:0;color:inherit;cursor:pointer;padding:0;}
+  .mark i{width:11px;height:11px;border-radius:50%;background:var(--accent);display:inline-block;flex:none;}
+  label.f{display:flex;flex-direction:column;gap:3px;}
+  label.f span{font-size:10px;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);font-weight:700;}
+  select{font-family:var(--body);font-size:14px;font-weight:500;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:7px 10px;min-width:160px;}
+  select:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  .months{display:flex;gap:4px;overflow-x:auto;padding-block:12px;border-bottom:1px solid var(--line);}
+  .months button{font-family:var(--body);font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:transparent;color:var(--muted);border:1px solid transparent;border-radius:999px;padding:5px 11px;cursor:pointer;white-space:nowrap;}
+  .months button:hover{color:var(--ink);background:var(--surface-2);}
+  .months button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+  .months button.is-now[aria-pressed="false"]{border-color:var(--line);color:var(--ink);}
+
+  .lede{padding-block:30px 8px;}
+  .lede h1{font-size:clamp(29px,5.6vw,48px);font-weight:800;letter-spacing:-.03em;}
+  .lede h1 em{font-style:normal;color:var(--accent);}
+  .lede p{color:var(--muted);max-width:58ch;margin:12px 0 0;font-size:15px;}
+  .legend-btn{margin-top:14px;font-family:var(--body);font-size:13px;font-weight:700;letter-spacing:.02em;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:6px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+  .legend-btn:hover{background:var(--accent);color:var(--accent-ink);}
+  .legend-btn b{font-family:var(--display);font-size:13px;}
+
+  /* legend overlay */
+  .overlay{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(18,18,18,.55);}
+  @supports (backdrop-filter: blur(1px)){.overlay{backdrop-filter:blur(3px);}}
+  /* glass card — translucent, blurred, lit from the top-left edge */
+  .sheet{
+    max-width:460px;width:100%;max-height:86vh;overflow-y:auto;
+    padding:24px 22px 26px;position:relative;border-radius:20px;
+    background:linear-gradient(145deg, rgba(255,252,242,.15), rgba(255,252,242,.06) 42%, rgba(44,44,44,.22));
+    border:1px solid rgba(243,232,204,.18);
+    box-shadow:0 20px 50px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,252,242,.22);
+    color:var(--ink);
+  }
+  @supports (backdrop-filter: blur(1px)){
+    .sheet{backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);}
+  }
+  @supports not (backdrop-filter: blur(1px)){
+    .sheet{background:#3A3A3A;}
+  }
+  .sheet h2{font-family:var(--display);font-size:24px;font-weight:800;letter-spacing:-.02em;padding-right:40px;}
+  .sheet > p{color:var(--muted);font-size:14px;margin:9px 0 0;}
+  .close{
+    position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:50%;
+    border:1px solid rgba(243,232,204,.22);background:rgba(243,232,204,.09);
+    color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:18px;line-height:1;padding:0;
+  }
+  @supports (backdrop-filter: blur(1px)){.close{backdrop-filter:blur(6px);}}
+  .close:hover{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+  .legend-row{display:flex;gap:13px;align-items:flex-start;padding:16px 0;border-bottom:1px solid rgba(243,232,204,.13);}
+  .legend-row:last-of-type{border-bottom:0;padding-bottom:4px;}
+  .legend-row .chip{flex:none;margin-top:2px;}
+  .legend-row .lt{font-size:14px;line-height:1.45;}
+  .legend-row .lt b{font-family:var(--display);font-size:15px;display:block;margin-bottom:2px;}
+  .legend-row .lt span{color:var(--muted);}
+  .sheet .foot-note{margin-top:16px;padding-top:15px;border-top:1px solid rgba(243,232,204,.13);font-size:13px;color:var(--muted);}
+
+  #flags{display:grid;gap:12px;margin-top:26px;}
+  @media (min-width:820px){#flags.two{grid-template-columns:1fr 1fr;}}
+  .panel{background:var(--last-bg);border-radius:14px;padding:16px 16px 17px;}
+  .panel.soon{background:var(--soon-bg);}
+  .panel-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:4px;}
+  .panel-head .k{font-size:10px;text-transform:uppercase;letter-spacing:.11em;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--last);color:#fff;}
+  .panel.soon .panel-head .k{background:var(--soon);}
+  .panel-head h3{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.02em;}
+  .panel p.why{font-size:13.5px;color:var(--muted);margin:0 0 13px;max-width:52ch;}
+  .minis{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;}
+  .mini{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:0;font-family:var(--body);text-align:left;color:inherit;display:flex;flex-direction:column;}
+  .mini:hover{border-color:var(--last);}
+  .panel.soon .mini:hover{border-color:var(--soon);}
+  .mini .art{aspect-ratio:auto;height:54px;}
+  .mini .art svg{width:36px;height:36px;}
+  .mini .mn{font-size:12.5px;font-weight:700;letter-spacing:-.01em;padding:7px 9px 8px;line-height:1.25;}
+
+  .group{margin-top:40px;}
+  .group-head{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:16px;}
+  .group-head h2{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;}
+  .group-head span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));gap:12px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;}
+  .card.is-last{border-color:var(--last);}
+  .group.away{margin-top:48px;padding-top:6px;}
+  .away-why{font-size:13.5px;color:var(--muted);margin:0 0 14px;max-width:62ch;}
+  .away-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));gap:12px;}
+  .away-card{display:flex;flex-direction:column;background:transparent;border:1px dashed var(--line);border-radius:var(--radius);padding:0;overflow:hidden;cursor:pointer;text-align:left;color:inherit;font-family:var(--body);opacity:.82;}
+  .away-card:hover{opacity:1;border-color:var(--muted);}
+  .away-card .art{aspect-ratio:3/2;width:100%;height:auto;border-radius:0;filter:saturate(.45);}
+  .away-card .art svg{width:52%;height:52%;}
+  .away-card .ab{padding:11px 13px 13px;}
+  .away-card .an{font-family:var(--display);font-weight:700;font-size:16.5px;letter-spacing:-.01em;line-height:1.2;}
+  .away-card .af{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.35;}
+  .art{background:var(--art-bg);aspect-ratio:3/2;max-width:100%;display:flex;align-items:center;justify-content:center;position:relative;}
+  .art svg{width:60%;height:60%;}
+  .art .chip{position:absolute;left:9px;top:9px;}
+  .chip{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;padding:3px 8px;border-radius:999px;}
+  .chip.peak,.chip.new{background:var(--peak-bg);color:var(--peak);}
+  .chip.last{background:var(--last-bg);color:var(--last);}
+  .body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:1px;flex:1;}
+  .body .n{font-family:var(--display);font-weight:700;font-size:16.5px;letter-spacing:-.01em;}
+  .body .l{font-size:13px;color:var(--muted);font-style:italic;}
+  .rec-btn{margin-top:10px;font-family:var(--body);font-size:12.5px;font-weight:700;letter-spacing:.03em;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:5px 12px;cursor:pointer;align-self:flex-start;}
+  .rec-btn:hover{background:var(--accent);color:var(--accent-ink);}
+
+  .always{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:14px;color:var(--muted);}
+  .always b{color:var(--ink);font-weight:700;}
+  footer{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);max-width:66ch;}
+  footer p{margin:0 0 8px;}
+
+  .back{font-family:var(--body);font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:transparent;border:0;color:var(--muted);cursor:pointer;padding:0;margin-top:26px;}
+  .back:hover{color:var(--accent);}
+  .rhead{display:flex;gap:22px;align-items:center;margin-top:18px;padding-bottom:26px;border-bottom:1px solid var(--line);}
+  .rhead .hero{width:104px;height:104px;flex:none;border-radius:var(--radius);background:var(--art-bg);display:flex;align-items:center;justify-content:center;}
+  .rhead .hero svg{width:66%;height:66%;}
+  .rhead h1{font-size:clamp(28px,5vw,42px);font-weight:800;letter-spacing:-.03em;}
+  .rhead .l{font-style:italic;color:var(--muted);margin:5px 0 0;}
+  .rgrid{margin-top:8px;}
+  .rsec{margin-top:30px;}
+  .rsec-head{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:8px;}
+  .rsec-head h2{font-family:var(--display);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;}
+  .rsec-head span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;margin-left:auto;}
+  .rsec-sub{font-size:13.5px;color:var(--muted);margin:9px 0 0;}
+  .rsec-empty{font-size:13.5px;color:var(--muted);margin:14px 0 0;max-width:54ch;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;padding:13px 15px;}
+  .rgrid-in{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:16px;}
+  a.rcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;text-decoration:none;display:flex;flex-direction:column;}
+  a.rcard:hover{border-color:var(--accent);}
+  a.rcard .art{aspect-ratio:16/10;}
+  a.rcard .n{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:-.01em;}
+  a.rcard .d{font-size:13px;color:var(--muted);margin-top:1px;}
+  a.rcard .go{margin-top:10px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);}
+  .rnote{margin-top:30px;font-size:13.5px;color:var(--muted);max-width:62ch;}
+
+  @media (max-width:560px){
+    .mark{width:100%;margin-right:0;}
+    label.f{width:100%;}
+    select{min-width:0;width:100%;}
+    .rhead{gap:16px;}
+    .rhead .hero{width:76px;height:76px;}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
+</style>
+
+<div class="bar">
+  <div class="bar-in">
+    <button class="mark" id="home" type="button"><i></i>Mandi Calendar</button>
+    <label class="f"><span>Your state</span><select id="city"></select></label>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="viewMain">
+    <div class="months" id="months" role="group" aria-label="Month"></div>
+    <div class="lede">
+      <h1 id="headline">In season</h1>
+      <p id="subline"></p>
+      <button class="legend-btn" id="legendOpen" type="button"><b>?</b> What do the labels mean</button>
+    </div>
+    <div id="flags"></div>
+    <div id="lists"></div>
+    <p class="always"><b>On the stall all year:</b> banana, papaya, coconut, lemon, onion, potato, ginger, curry leaves. Good to know, but not worth waiting for.</p>
+    <footer>
+      <p>Seasons here follow broad climate zones, so states that share a zone share a calendar, and within a large state the hills and the plains can run several weeks apart. Cold storage and imports mean you will still see out-of-season produce — it just costs more and tastes like less.</p>
+      <p>Calendar compiled by hand from horticulture board and state agriculture extension sources. Corrections welcome; the ones that matter usually come from the person running the stall.</p>
+    </footer>
+  </div>
+
+  <div id="viewRecipes" hidden>
+    <button class="back" id="back" type="button">← Back to the calendar</button>
+    <div class="rhead">
+      <div class="hero" id="rHero"></div>
+      <div>
+        <h1 id="rTitle">Recipes</h1>
+        <p class="l" id="rLocal"></p>
+      </div>
+    </div>
+    <div class="rgrid" id="rGrid"></div>
+    <p class="rnote">Tap any dish to open a YouTube search for it. No single video is picked for you — cooking is regional, and the version your family makes is probably in there.</p>
+  </div>
+</div>
+
+<div class="overlay" id="legend" hidden role="dialog" aria-modal="true" aria-labelledby="legendTitle">
+  <div class="sheet">
+    <button class="close" id="legendClose" type="button" aria-label="Close">×</button>
+    <h2 id="legendTitle">Reading the labels</h2>
+    <p>Every item carries one label telling you where it sits in its season here.</p>
+
+    <div class="legend-row">
+      <span class="chip new">Just arrived</span>
+      <div class="lt"><b>The season has just opened</b>
+      <span>The first of the crop is reaching stalls this month. Prices are usually at their highest now and the pick is small, but this is the freshest it will be all year.</span></div>
+    </div>
+
+    <div class="legend-row">
+      <span class="chip peak">In season</span>
+      <div class="lt"><b>The middle of the run</b>
+      <span>Widely grown nearby and easy to find. This is when it is cheapest, best and most worth building a meal around.</span></div>
+    </div>
+
+    <div class="legend-row">
+      <span class="chip last">Last month</span>
+      <div class="lt"><b>The season ends here</b>
+      <span>This is the final month it comes off local fields. From next month anything you see has been held in cold storage or trucked in from another zone — it costs more and tastes of less.</span></div>
+    </div>
+
+    <p class="foot-note">Labels come from the growing calendar for your state's climate zone. States that share a zone share a calendar, so within a large state the hills and the plains can differ by several weeks.</p>
+  </div>
+</div>
+
+<script>
+/* Zones follow growing climate, not administrative lumps.
+   Ladakh, Kashmir and the Himachal/Uttarakhand hills are separate — their seasons are nothing alike. */
+const ZONES={N:"North plains",LA:"Ladakh",KA:"Kashmir",HM:"Himachal & Uttarakhand hills",W:"West & Central",S:"South",E:"East plains",NE:"Northeast"};
+const STATES=[
+ ["Andaman & Nicobar","S"],["Andhra Pradesh","S"],["Arunachal Pradesh","NE"],["Assam","NE"],
+ ["Bihar","E"],["Chandigarh","N"],["Chhattisgarh","E"],["Delhi","N"],
+ ["Goa","W"],["Gujarat","W"],["Haryana","N"],["Himachal Pradesh","HM"],
+ ["Jammu & Kashmir","KA"],["Jharkhand","E"],["Karnataka","S"],["Kerala","S"],
+ ["Ladakh","LA"],["Madhya Pradesh","W"],["Maharashtra","W"],["Manipur","NE"],
+ ["Meghalaya","NE"],["Mizoram","NE"],["Nagaland","NE"],["Odisha","E"],
+ ["Puducherry","S"],["Punjab","N"],["Rajasthan","N"],["Sikkim","NE"],
+ ["Tamil Nadu","S"],["Telangana","S"],["Tripura","NE"],["Uttar Pradesh","N"],
+ ["Uttarakhand","HM"],["West Bengal","E"]
+];
+const REGION={N:"North India",LA:"Ladakh",KA:"Kashmir",HM:"the Himachal and Uttarakhand hills",W:"West India",S:"South India",E:"East India",NE:"the Northeast"};
+const MN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MFULL=["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+const LEAF='<path d="M34 16c7-5 14-5 18-3-1 5-5 10-11 12-4 1-7 0-9-2z" fill="var(--lf)"/>';
+const STEM='<path d="M32 18v-7" stroke="var(--st)" stroke-width="3.4" stroke-linecap="round"/>';
+const SHAPE={
+  round:()=>'<circle cx="32" cy="38" r="20" fill="var(--a)"/><ellipse cx="25" cy="31" rx="5" ry="3.4" fill="#fff" opacity=".28"/>'+STEM+LEAF,
+  citrus:()=>'<circle cx="32" cy="38" r="20" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.6" opacity=".55"><path d="M32 21v34M17 38h30M20 26l24 24M44 26L20 50"/></g>'+STEM+LEAF,
+  oval:()=>'<path d="M46 26c7 9 4 24-7 29s-22-1-24-11c-2-11 8-22 19-23 5-1 9 1 12 5z" fill="var(--a)"/><path d="M40 28c4 6 3 14-3 18" stroke="#fff" stroke-width="2.6" opacity=".3" fill="none" stroke-linecap="round"/>'+LEAF,
+  melon:()=>'<circle cx="32" cy="38" r="21" fill="var(--a)"/><g stroke="var(--b)" stroke-width="3" fill="none" opacity=".75"><path d="M32 17v42M20 21c-4 9-4 25 0 34M44 21c4 9 4 25 0 34"/></g>',
+  berry:()=>'<circle cx="24" cy="42" r="9" fill="var(--a)"/><circle cx="40" cy="44" r="8" fill="var(--a)"/><circle cx="32" cy="30" r="8.5" fill="var(--a)"/><circle cx="21" cy="28" r="6" fill="var(--a)" opacity=".85"/><circle cx="43" cy="30" r="6" fill="var(--a)" opacity=".85"/>'+LEAF,
+  spiky:()=>'<ellipse cx="32" cy="38" rx="19" ry="21" fill="var(--a)"/><g fill="var(--b)" opacity=".6"><circle cx="24" cy="28" r="3"/><circle cx="34" cy="25" r="3"/><circle cx="41" cy="34" r="3"/><circle cx="23" cy="40" r="3"/><circle cx="33" cy="38" r="3"/><circle cx="39" cy="47" r="3"/><circle cx="27" cy="50" r="3"/></g>'+STEM,
+  pineapple:()=>'<ellipse cx="32" cy="42" rx="16" ry="19" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.5" opacity=".6"><path d="M20 32l24 20M44 32L20 52"/></g><path d="M32 23c-3-8-8-11-8-11 6 0 8 3 8 3 0-4 0-7 0-7s3 4 3 8c0 0 3-4 8-4-3 3-5 7-5 11z" fill="var(--lf)"/>',
+  gourd:()=>'<path d="M26 56c-6-4-8-13-4-21 3-7 6-11 6-18" stroke="var(--a)" stroke-width="13" fill="none" stroke-linecap="round"/>'+STEM,
+  bitter:()=>'<path d="M26 56c-6-4-8-13-4-21 3-7 6-11 6-18" stroke="var(--a)" stroke-width="13" fill="none" stroke-linecap="round"/><g fill="var(--b)" opacity=".55"><circle cx="24" cy="48" r="2.4"/><circle cx="23" cy="39" r="2.4"/><circle cx="26" cy="31" r="2.4"/><circle cx="29" cy="23" r="2.4"/><circle cx="31" cy="44" r="2.4"/><circle cx="30" cy="35" r="2.4"/></g>'+STEM,
+  leafy:()=>'<path d="M32 58V34" stroke="var(--st)" stroke-width="3.4" stroke-linecap="round"/><path d="M32 36c-10 0-18-7-19-17 11-2 19 5 19 17z" fill="var(--a)"/><path d="M32 36c10 0 18-7 19-17-11-2-19 5-19 17z" fill="var(--a)" opacity=".85"/><path d="M32 40c-6 2-13-1-16-8 8-3 14 0 16 8z" fill="var(--b)"/>',
+  floret:()=>'<g fill="var(--a)"><circle cx="24" cy="30" r="9"/><circle cx="40" cy="30" r="9"/><circle cx="32" cy="24" r="9"/><circle cx="32" cy="35" r="9"/></g><path d="M20 38c4 10 20 10 24 0 2 8-4 17-12 17s-14-9-12-17z" fill="var(--lf)"/>',
+  root:()=>'<path d="M32 58c-6-8-9-17-7-27 1-5 4-8 7-8s6 3 7 8c2 10-1 19-7 27z" fill="var(--a)"/><path d="M32 23c-3-7-9-10-9-10 6-1 9 2 9 2s3-3 9-2c0 0-6 3-9 10z" fill="var(--lf)"/>',
+  taper:()=>'<path d="M30 58c-2-12-2-28 0-38 1-4 3-4 4 0 2 10 2 26 0 38-1 2-3 2-4 0z" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.4" opacity=".5"><path d="M29 32h6M29 40h6M29 48h6"/></g><path d="M32 20c-4-6-10-8-10-8 6-2 10 1 10 1s4-3 10-1c0 0-6 2-10 8z" fill="var(--lf)"/>',
+  pod:()=>'<path d="M18 26c10-4 24 4 28 18 1 4-2 6-5 4C30 42 22 36 17 32c-2-2-1-5 1-6z" fill="var(--a)"/><g fill="var(--b)" opacity=".5"><circle cx="26" cy="33" r="2.6"/><circle cx="33" cy="38" r="2.6"/><circle cx="39" cy="43" r="2.6"/></g>'+LEAF,
+  okra:()=>'<path d="M32 57c-5-9-7-21-5-31 1-4 2-6 5-6s4 2 5 6c2 10 0 22-5 31z" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.4" opacity=".5"><path d="M30 26c0 10 0 20 2 27M34 26c0 10 0 20-2 27"/></g><path d="M32 20c-4 0-7-2-8-5 5-1 8 0 8 0s3-1 8 0c-1 3-4 5-8 5z" fill="var(--lf)"/>',
+  cob:()=>'<path d="M32 58c-6-6-8-16-8-25 0-6 3-10 8-10s8 4 8 10c0 9-2 19-8 25z" fill="var(--a)"/><g fill="var(--b)" opacity=".45"><circle cx="28" cy="32" r="2"/><circle cx="36" cy="32" r="2"/><circle cx="32" cy="37" r="2"/><circle cx="28" cy="42" r="2"/><circle cx="36" cy="42" r="2"/><circle cx="32" cy="47" r="2"/></g><path d="M24 30c-7-5-9-14-9-14 8 1 12 6 13 12zM40 30c7-5 9-14 9-14-8 1-12 6-13 12z" fill="var(--lf)"/>',
+  brinjal:()=>'<path d="M40 25c8 6 8 20 0 27-7 7-19 6-22-2-4-10 4-22 13-26 3-1 6-1 9 1z" fill="var(--a)"/><path d="M34 22c-4-2-8-2-11 0 1-5 5-8 10-8 0 3 1 6 1 8z" fill="var(--lf)"/>',
+  capsicum:()=>'<path d="M20 30c4-3 8-3 12-1 4-2 8-2 12 1 4 3 5 12 2 18-3 7-9 10-14 10s-11-3-14-10c-3-6-2-15 2-18z" fill="var(--a)"/><path d="M32 29c-1-4-1-7-1-7h2s0 3-1 7z" fill="var(--st)"/><path d="M32 24c-3-3-7-3-7-3 3-3 7-2 7-2s4-1 7 2c0 0-4 0-7 3z" fill="var(--lf)"/>',
+  stalk:()=>'<g stroke="var(--a)" stroke-width="7" stroke-linecap="round"><path d="M22 56V26"/><path d="M32 57V20"/><path d="M42 56V28"/></g><g stroke="var(--b)" stroke-width="1.6" opacity=".55"><path d="M18 40h8M28 34h8M38 42h8"/></g><path d="M32 20c-4-6-9-8-9-8 6-1 9 2 9 2s3-3 9-2c0 0-5 2-9 8z" fill="var(--lf)"/>',
+  tuber:()=>'<path d="M21 34c3-8 12-12 20-8 9 4 12 14 8 21-5 8-17 10-24 4-5-4-6-11-4-17z" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.4" opacity=".45"><path d="M24 36c5 2 9 6 11 12M38 30c3 3 5 8 5 13"/></g>',
+  stalkthin:()=>'<g stroke="var(--a)" stroke-width="5" stroke-linecap="round"><path d="M24 57V30"/><path d="M32 57V25"/><path d="M40 57V32"/></g><path d="M24 32c-3-6-2-12-2-12 4 3 5 8 5 12zM32 27c-2-8 0-15 0-15 3 5 3 11 2 15zM40 34c1-6 4-11 4-11 1 5 0 9-2 11z" fill="var(--lf)"/>',
+
+  /* --- distinct silhouettes: colour is not identity --- */
+  apple:()=>'<path d="M32 23c5-4 13-3 16 3 4 8 0 22-7 30-3 3-6 3-9 1-3 2-6 2-9-1-7-8-11-22-7-30 3-6 11-7 16-3z" fill="var(--a)"/><ellipse cx="24" cy="33" rx="4" ry="3" fill="#fff" opacity=".3"/><path d="M32 23v-8" stroke="var(--st)" stroke-width="3" stroke-linecap="round"/>'+LEAF,
+  pomegranate:()=>'<circle cx="32" cy="40" r="19" fill="var(--a)"/><path d="M26 23l2-8 3 6 3-7 2 7 3-5 2 8z" fill="var(--a)"/><g fill="var(--b)" opacity=".4"><circle cx="27" cy="38" r="2.6"/><circle cx="36" cy="36" r="2.6"/><circle cx="32" cy="45" r="2.6"/><circle cx="39" cy="45" r="2.6"/></g>',
+  stone:()=>'<circle cx="32" cy="38" r="19" fill="var(--a)"/><path d="M32 20c-5 8-5 29 0 37" stroke="var(--b)" stroke-width="2.2" fill="none" opacity=".45"/>'+LEAF,
+  guava:()=>'<circle cx="32" cy="37" r="18" fill="var(--a)"/><path d="M32 51l4 5-4 3-4-3z" fill="var(--b)" opacity=".45"/><path d="M32 19v-6" stroke="var(--st)" stroke-width="3" stroke-linecap="round"/>'+LEAF,
+  tomato:()=>'<ellipse cx="32" cy="41" rx="20" ry="17" fill="var(--a)"/><ellipse cx="24" cy="35" rx="5" ry="3" fill="#fff" opacity=".28"/><path d="M32 27c-4-4-10-5-10-5 4-2 7-1 7-1s-2-3-1-6c3 2 4 5 4 5s1-3 4-5c1 3-1 6-1 6s3-1 7 1c0 0-6 1-10 5z" fill="var(--lf)"/>',
+  pumpkin:()=>'<ellipse cx="32" cy="41" rx="21" ry="17" fill="var(--a)"/><g stroke="var(--b)" stroke-width="2" fill="none" opacity=".45"><path d="M32 24v34M22 27c-3 8-3 21 0 28M42 27c3 8 3 21 0 28"/></g><path d="M32 24v-8" stroke="var(--st)" stroke-width="4.5" stroke-linecap="round"/>',
+  cabbage:()=>'<circle cx="32" cy="38" r="19" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.8" fill="none" opacity=".5"><path d="M32 19c-9 6-12 17-8 28M32 19c9 6 12 17 8 28M15 34c8 3 13 11 13 23M49 34c-8 3-13 11-13 23"/></g>',
+  kohlrabi:()=>'<ellipse cx="32" cy="45" rx="17" ry="13" fill="var(--a)"/><g stroke="var(--st)" stroke-width="3" stroke-linecap="round"><path d="M26 34V19M32 33V14M38 34V20"/></g><path d="M26 20c-4-3-7-8-7-8 6 1 8 5 8 8zM32 15c0-6 3-11 3-11 2 6 0 9-1 11zM38 21c2-4 7-7 7-7 0 5-4 7-6 8z" fill="var(--lf)"/>',
+  amla:()=>'<circle cx="32" cy="38" r="18" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.5" fill="none" opacity=".5"><path d="M32 20v36M23 23c-3 9-3 22 0 30M41 23c3 9 3 22 0 30"/></g><path d="M32 20v-6" stroke="var(--st)" stroke-width="2.8" stroke-linecap="round"/>',
+  mangosteen:()=>'<circle cx="32" cy="41" r="18" fill="var(--a)"/><path d="M24 26c3-4 13-4 16 0 2 3 1 6-2 6H26c-3 0-4-3-2-6z" fill="var(--lf)"/><path d="M32 22v-6" stroke="var(--st)" stroke-width="3" stroke-linecap="round"/>',
+  woodapple:()=>'<circle cx="32" cy="38" r="19" fill="var(--a)"/><g fill="var(--b)" opacity=".32"><circle cx="26" cy="31" r="1.8"/><circle cx="36" cy="29" r="1.8"/><circle cx="41" cy="39" r="1.8"/><circle cx="28" cy="44" r="1.8"/><circle cx="35" cy="48" r="1.8"/><circle cx="22" cy="39" r="1.8"/><circle cx="32" cy="37" r="1.8"/></g>',
+  sapota:()=>'<ellipse cx="32" cy="39" rx="16" ry="19" fill="var(--a)"/><g fill="var(--b)" opacity=".25"><circle cx="27" cy="33" r="1.6"/><circle cx="37" cy="37" r="1.6"/><circle cx="31" cy="45" r="1.6"/></g><path d="M32 20v-6" stroke="var(--st)" stroke-width="2.8" stroke-linecap="round"/>',
+  tinda:()=>'<ellipse cx="32" cy="43" rx="15" ry="13" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.4" fill="none" opacity=".4"><path d="M24 36c-2 6-2 10 0 14M40 36c2 6 2 10 0 14"/></g><path d="M32 30v-7" stroke="var(--st)" stroke-width="4" stroke-linecap="round"/>',
+  ashgourd:()=>'<ellipse cx="32" cy="41" rx="21" ry="16" fill="var(--a)"/><ellipse cx="24" cy="35" rx="7" ry="3.4" fill="#fff" opacity=".4"/><path d="M32 25v-7" stroke="var(--st)" stroke-width="3.6" stroke-linecap="round"/>',
+  smalloval:()=>'<ellipse cx="32" cy="40" rx="13" ry="16" fill="var(--a)"/>'+STEM+LEAF,
+
+  grapes:()=>'<g fill="var(--a)"><circle cx="32" cy="25" r="6"/><circle cx="25" cy="34" r="6"/><circle cx="39" cy="34" r="6"/><circle cx="32" cy="37" r="6"/><circle cx="28" cy="46" r="5.6"/><circle cx="37" cy="46" r="5.6"/><circle cx="32" cy="55" r="5"/></g><path d="M32 19v-5" stroke="var(--st)" stroke-width="3" stroke-linecap="round"/>'+LEAF,
+  cherry:()=>'<g stroke="var(--st)" stroke-width="2.6" fill="none" stroke-linecap="round"><path d="M32 17c-6 7-9 14-9 19M32 17c5 7 8 13 8 18"/></g><circle cx="23" cy="45" r="9" fill="var(--a)"/><circle cx="41" cy="44" r="8" fill="var(--a)" opacity=".92"/>'+LEAF,
+  twigberry:()=>'<path d="M19 57C23 41 29 28 45 17" stroke="var(--st)" stroke-width="2.6" fill="none" stroke-linecap="round"/><g fill="var(--a)"><circle cx="21" cy="50" r="4"/><circle cx="25" cy="43" r="4"/><circle cx="30" cy="35" r="4"/><circle cx="36" cy="28" r="4"/><circle cx="42" cy="22" r="3.6"/></g>',
+  aggregate:()=>'<path d="M32 19c5 0 8 4 8 10v15c0 7-4 12-8 12s-8-5-8-12V29c0-6 3-10 8-10z" fill="var(--a)"/><g fill="var(--b)" opacity=".38"><circle cx="28" cy="27" r="2.4"/><circle cx="36" cy="29" r="2.4"/><circle cx="30" cy="36" r="2.4"/><circle cx="36" cy="41" r="2.4"/><circle cx="29" cy="45" r="2.4"/></g><path d="M32 19v-6" stroke="var(--st)" stroke-width="2.8" stroke-linecap="round"/>',
+  ovalberry:()=>'<ellipse cx="26" cy="41" rx="8" ry="12" fill="var(--a)"/><ellipse cx="40" cy="43" rx="7" ry="10" fill="var(--a)" opacity=".88"/><path d="M26 29v-6M40 33v-5" stroke="var(--st)" stroke-width="2.4" stroke-linecap="round"/>'+LEAF,
+
+  lauki:()=>'<path d="M32 15c3 0 5 2 5 5 0 5-2 6-2 10 0 4 8 6 8 15 0 9-6 14-11 14s-11-5-11-14c0-9 8-11 8-15 0-4-2-5-2-10 0-3 2-5 5-5z" fill="var(--a)"/><ellipse cx="27" cy="45" rx="4" ry="6" fill="#fff" opacity=".18"/>',
+  turai:()=>'<path d="M27 56c-6-6-7-17-4-25 2-6 4-10 4-16" stroke="var(--a)" stroke-width="12" fill="none" stroke-linecap="round"/><g stroke="var(--b)" stroke-width="1.3" fill="none" opacity=".5"><path d="M24 50c-2-9-1-17 1-23M31 52c-2-9-1-19 1-25"/></g>',
+  parwal:()=>'<ellipse cx="32" cy="38" rx="11" ry="18" fill="var(--a)" transform="rotate(16 32 38)"/><g stroke="var(--b)" stroke-width="1.4" fill="none" opacity=".5"><path d="M27 24c-2 10-1 21 1 30M36 25c2 10 2 20 0 29"/></g>',
+  pear:()=>'<path d="M32 19c3 0 4 2 4 5s-3 5-1 9c2 6 9 9 9 18 0 8-6 13-12 13s-12-5-12-13c0-9 7-12 9-18 2-4-1-6-1-9s1-5 4-5z" fill="var(--a)"/><ellipse cx="27" cy="46" rx="4" ry="5" fill="#fff" opacity=".2"/>'+LEAF,
+  cucumber:()=>'<path d="M32 57c-4-9-5-24-3-33 1-4 2-6 3-6s2 2 3 6c2 9 1 24-3 33z" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.3" fill="none" opacity=".45"><path d="M30 24c-1 11-1 22 1 29M34 24c1 11 1 22-1 29"/></g><path d="M32 18v-4" stroke="var(--st)" stroke-width="2.6" stroke-linecap="round"/>',
+
+  methi:()=>'<g stroke="var(--st)" stroke-width="2.4" fill="none" stroke-linecap="round"><path d="M32 58V31M32 39l-9-6M32 46l9-6"/></g><g fill="var(--a)"><circle cx="32" cy="26" r="6"/><circle cx="21" cy="30" r="5.4"/><circle cx="43" cy="35" r="5.4"/><circle cx="23" cy="43" r="5"/></g>',
+  mustard:()=>'<path d="M32 58V27" stroke="var(--st)" stroke-width="3" stroke-linecap="round"/><path d="M32 33c-10-2-15-11-15-19 10 1 15 9 15 19z" fill="var(--a)"/><path d="M32 43c10-2 15-10 15-18-10 1-15 8-15 18z" fill="var(--a)" opacity=".85"/><g fill="var(--b)"><circle cx="32" cy="19" r="3"/><circle cx="27" cy="23" r="2.2"/><circle cx="37" cy="23" r="2.2"/></g>',
+
+  slimpod:()=>'<path d="M17 24c15 5 25 17 29 29" stroke="var(--a)" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M17 24c15 5 25 17 29 29" stroke="var(--b)" stroke-width="1.4" fill="none" opacity=".4"/>'+LEAF,
+  clusterpod:()=>'<g stroke="var(--a)" stroke-width="5.5" fill="none" stroke-linecap="round"><path d="M22 20c1 12 3 24 6 34"/><path d="M32 19c0 13 0 25 0 35"/><path d="M42 20c-1 12-3 24-6 34"/></g>',
+  longpod:()=>'<g stroke="var(--a)" stroke-width="5" fill="none" stroke-linecap="round"><path d="M24 12c-4 16-3 32 2 46"/><path d="M38 13c4 16 3 31-2 45"/></g><g fill="var(--b)" opacity=".4"><circle cx="25" cy="30" r="2"/><circle cx="37" cy="32" r="2"/><circle cx="27" cy="44" r="2"/></g>',
+  tamarind:()=>'<path d="M18 20c10 2 17 10 20 19 2 7 2 13 1 18" stroke="var(--a)" stroke-width="9" fill="none" stroke-linecap="round"/><g fill="var(--b)" opacity=".45"><circle cx="24" cy="25" r="2.6"/><circle cx="32" cy="33" r="2.6"/><circle cx="37" cy="43" r="2.6"/><circle cx="38" cy="53" r="2.6"/></g>',
+
+  radish:()=>'<path d="M32 58l-2-9c-7-3-11-10-10-17 1-6 6-9 12-9s11 3 12 9c1 7-3 14-10 17z" fill="var(--a)"/><path d="M32 23c-4-7-11-10-11-10 7-2 11 2 11 2s4-4 11-2c0 0-7 3-11 10z" fill="var(--lf)"/>',
+  sweetpotato:()=>'<path d="M16 42c3-11 16-18 27-14 9 4 11 13 5 19-7 7-22 8-29 3-3-2-4-5-3-8z" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.3" fill="none" opacity=".4"><path d="M23 42c6 2 11 6 14 11M36 33c4 3 7 8 7 13"/></g>',
+  arbi:()=>'<ellipse cx="32" cy="40" rx="13" ry="18" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.5" fill="none" opacity=".45"><path d="M20 34h24M20 42h24M22 50h20"/></g><path d="M32 22v-7" stroke="var(--st)" stroke-width="3" stroke-linecap="round"/>',
+  yam:()=>'<path d="M17 38c2-10 12-17 22-14 11 3 15 14 10 22-5 9-19 12-27 6-5-4-6-9-5-14z" fill="var(--a)"/><g fill="var(--b)" opacity=".3"><circle cx="26" cy="38" r="2.2"/><circle cx="36" cy="35" r="2.2"/><circle cx="33" cy="46" r="2.2"/><circle cx="42" cy="42" r="2.2"/></g>',
+
+  drumstick:()=>'<g stroke="var(--a)" stroke-width="4.5" stroke-linecap="round"><path d="M22 58L27 10"/><path d="M32 58V9"/><path d="M42 58L37 11"/></g><g stroke="var(--b)" stroke-width="1.2" opacity=".5"><path d="M23 48h5M33 44h5M30 28h5M25 30h5M38 34h4"/></g>',
+  greengarlic:()=>'<g stroke="var(--a)" stroke-width="4" stroke-linecap="round"><path d="M26 41V15"/><path d="M32 41V10"/><path d="M38 41V17"/></g><path d="M32 38c5 0 9 4 9 9s-4 9-9 9-9-4-9-9 4-9 9-9z" fill="#EFEADA"/><g stroke="var(--b)" stroke-width="1.2" opacity=".45"><path d="M32 39v17"/></g>',
+  springonion:()=>'<g stroke="var(--a)" stroke-width="4" stroke-linecap="round"><path d="M26 42V16"/><path d="M32 42V11"/><path d="M38 42V18"/></g><ellipse cx="32" cy="48" rx="7" ry="10" fill="#EFEADA"/>',
+
+  lotus:()=>'<ellipse cx="32" cy="40" rx="19" ry="15" fill="var(--a)"/><g fill="var(--b)" opacity=".45"><circle cx="32" cy="40" r="3.6"/><circle cx="23" cy="36" r="3"/><circle cx="41" cy="36" r="3"/><circle cx="25" cy="46" r="3"/><circle cx="39" cy="46" r="3"/><circle cx="32" cy="30" r="3"/><circle cx="32" cy="50" r="3"/></g>',
+  bambooshoot:()=>'<path d="M32 12c9 11 13 29 11 44H21c-2-15 2-33 11-44z" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.6" fill="none" opacity=".5"><path d="M23 46c6-5 12-5 18 0M25 36c5-4 9-4 14 0M28 26c3-2 5-2 8 0"/></g>',
+
+  custardapple:()=>'<circle cx="32" cy="39" r="19" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.6" fill="none" opacity=".55"><path d="M17 33c5 4 10 4 15 0s10-4 15 0M15 42c5 4 10 4 17 0s12-4 17 0M20 51c4 3 8 3 12 0s8-3 12 0"/></g><path d="M32 20v-6" stroke="var(--st)" stroke-width="3" stroke-linecap="round"/>',
+  litchi:()=>'<circle cx="26" cy="42" r="11" fill="var(--a)"/><circle cx="42" cy="40" r="9" fill="var(--a)" opacity=".9"/><g fill="var(--b)" opacity=".4"><circle cx="22" cy="38" r="1.8"/><circle cx="29" cy="40" r="1.8"/><circle cx="25" cy="47" r="1.8"/><circle cx="31" cy="46" r="1.8"/><circle cx="41" cy="37" r="1.6"/><circle cx="45" cy="43" r="1.6"/></g><path d="M26 30v-8M42 30v-6" stroke="var(--st)" stroke-width="2.4" stroke-linecap="round"/>',
+  strawberry:()=>'<path d="M32 58c-9-6-15-16-14-24 1-6 7-9 14-9s13 3 14 9c1 8-5 18-14 24z" fill="var(--a)"/><g fill="var(--b)" opacity=".45"><circle cx="27" cy="33" r="1.5"/><circle cx="36" cy="33" r="1.5"/><circle cx="32" cy="40" r="1.5"/><circle cx="25" cy="42" r="1.5"/><circle cx="39" cy="41" r="1.5"/><circle cx="32" cy="49" r="1.5"/></g><path d="M32 25c-5-3-12-2-12-2 3-3 7-3 7-3s-3-3-2-6c3 2 5 5 5 5s2-4 5-5c1 3-1 6-1 6s4-1 7 2c0 0-6-1-9 3z" fill="var(--lf)"/><path d="M32 22v-7" stroke="var(--st)" stroke-width="2.6" stroke-linecap="round"/>',
+  netmelon:()=>'<circle cx="32" cy="38" r="21" fill="var(--a)"/><g stroke="var(--b)" stroke-width="1.5" fill="none" opacity=".55"><path d="M14 32c8 3 28 3 36 0M13 44c8-3 30-3 38 0M24 18c-4 12-4 28 0 40M40 18c4 12 4 28 0 40"/></g>',
+  beetroot:()=>'<path d="M32 58c-1-5-2-8-2-8-8-2-13-9-12-16 1-6 7-10 14-10s13 4 14 10c1 7-4 14-12 16 0 0-1 3-2 8z" fill="var(--a)"/><path d="M32 24c-4-8-12-11-12-11 7-2 12 3 12 3s5-5 12-3c0 0-8 3-12 11z" fill="var(--lf)"/>'
+};
+function art(item, cls){
+  const s=SHAPE[item.s]||SHAPE.round;
+  return '<div class="'+(cls||"art")+'" style="--a:'+item.c+';--b:'+(item.c2||"#ffffff")+'">'+
+    '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+s()+'</svg></div>';
+}
+
+const DATA=[
+ {n:"Mango",l:"Aam",t:"fruit",s:"oval",c:"#F2A317",c2:"#C97A00",z:{N:[6,8],W:[4,6],S:[3,6],E:[5,7],NE:[6,7],HM:[6,7]}},
+ {n:"Litchi",l:"Lichi",t:"fruit",s:"spiky",c:"#D9414B",c2:"#9E2630",z:{N:[6,7],E:[5,6],HM:[5,6],NE:[5,6]}},
+ {n:"Guava",l:"Amrood",t:"fruit",s:"round",c:"#A8C25C",c2:"#E88AA0",z:{N:[10,2],W:[10,1],S:[9,1],E:[11,2]}},
+ {n:"Custard apple",l:"Sitaphal",t:"fruit",s:"spiky",c:"#8CA86E",c2:"#5F7C46",z:{W:[8,11],S:[8,11],N:[9,11],E:[9,11]}},
+ {n:"Java plum",l:"Jamun",t:"fruit",s:"berry",c:"#4B2B63",c2:"#2E1740",z:{N:[6,7],W:[5,7],S:[5,7],E:[6,7]}},
+ {n:"Watermelon",l:"Tarbooz",t:"fruit",s:"melon",c:"#3D8B4A",c2:"#1F5C2C",z:{N:[4,6],W:[2,5],S:[2,5],E:[4,6]}},
+ {n:"Muskmelon",l:"Kharbooja",t:"fruit",s:"melon",c:"#D9B45C",c2:"#A8842F",z:{N:[4,6],W:[3,5],E:[4,6]}},
+ {n:"Pomegranate",l:"Anar",t:"fruit",s:"round",c:"#B52A3C",c2:"#801624",z:{W:[9,2],S:[9,1]}},
+ {n:"Orange",l:"Santra",t:"fruit",s:"citrus",c:"#EE8B1E",c2:"#B45F06",z:{W:[10,3],NE:[11,2]}},
+ {n:"Kinnow",l:"Kinnu",t:"fruit",s:"citrus",c:"#F0A12B",c2:"#B86F0C",z:{N:[12,3]}},
+ {n:"Sweet lime",l:"Mosambi",t:"fruit",s:"citrus",c:"#BFC94D",c2:"#8A9424",z:{W:[8,11],S:[7,10]}},
+ {n:"Apple",l:"Seb",t:"fruit",s:"round",c:"#C8303C",c2:"#8E1A24",z:{KA:[8,11],HM:[7,10],LA:[9,10]}},
+ {n:"Apricot",l:"Khubani",t:"fruit",s:"round",c:"#E8A33C",c2:"#C97A2B",z:{LA:[7,9],KA:[6,7],HM:[6,7]}},
+ {n:"Plum",l:"Aloo bukhara",t:"fruit",s:"round",c:"#7A2B52",c2:"#4E1633",z:{KA:[7,8],HM:[6,7],N:[5,5]}},
+ {n:"Peach",l:"Aadu",t:"fruit",s:"round",c:"#E98A62",c2:"#C25C36",z:{KA:[7,8],HM:[6,7],N:[4,6]}},
+ {n:"Pear",l:"Nashpati",t:"fruit",s:"gourd",c:"#C4CB5E",c2:"#8E9430",z:{KA:[8,10],HM:[7,9],N:[7,8]}},
+ {n:"Cherry",l:"Gilas",t:"fruit",s:"berry",c:"#B4162F",c2:"#7A0A1D",z:{KA:[5,6],HM:[5,6]}},
+ {n:"Seabuckthorn",l:"Tsestalulu",t:"fruit",s:"berry",c:"#E8A020",c2:"#B06F04",z:{LA:[9,10],HM:[9,10]}},
+ {n:"Grapes",l:"Angoor",t:"fruit",s:"berry",c:"#6B8E3A",c2:"#48631F",z:{W:[1,4],S:[1,4],N:[6,6],KA:[8,9]}},
+ {n:"Sapota",l:"Chikoo",t:"fruit",s:"round",c:"#8A6238",c2:"#5E3F1E",z:{W:[12,4],S:[11,3]}},
+ {n:"Sugarcane",l:"Ganna",t:"fruit",s:"stalk",c:"#7C9244",c2:"#4F6224",z:{N:[11,3],E:[11,3],W:[11,4],NE:[11,2]}},
+ {n:"Indian gooseberry",l:"Amla",t:"fruit",s:"round",c:"#B7C948",c2:"#849418",z:{N:[11,1],W:[11,1],E:[11,1],S:[11,2]}},
+ {n:"Indian jujube",l:"Ber",t:"fruit",s:"round",c:"#C98A2E",c2:"#96600F",z:{N:[12,3],W:[12,3],S:[12,3]}},
+ {n:"Phalsa",l:"Falsa",t:"fruit",s:"berry",c:"#5B2350",c2:"#360F30",z:{N:[5,6]}},
+ {n:"Pineapple",l:"Ananas",t:"fruit",s:"pineapple",c:"#D9A21C",c2:"#A06F00",z:{NE:[6,8],S:[4,7]}},
+ {n:"Jackfruit",l:"Kathal",t:"fruit",s:"spiky",c:"#9CA83C",c2:"#6B7618",z:{S:[3,7],E:[4,6],W:[4,6],N:[3,6],NE:[4,7]}},
+ {n:"Strawberry",l:"Strawberry",t:"fruit",s:"root",c:"#CE2141",c2:"#910D27",z:{W:[12,3],N:[1,3],KA:[5,6]}},
+ {n:"Mulberry",l:"Shahtoot",t:"fruit",s:"berry",c:"#4A1436",c2:"#2B071E",z:{N:[3,5],KA:[5,6]}},
+ {n:"Tamarind",l:"Imli",t:"fruit",s:"pod",c:"#8A5A2E",c2:"#5C3714",z:{S:[2,4],W:[1,3]}},
+ {n:"Mangosteen",l:"Mangustan",t:"fruit",s:"round",c:"#5B2338",c2:"#360F20",z:{S:[6,8]}},
+ {n:"Wood apple",l:"Bael",t:"fruit",s:"round",c:"#A8894A",c2:"#755A22",z:{N:[4,6],E:[3,5]}},
+
+ {n:"Cauliflower",l:"Gobhi",t:"veg",s:"floret",c:"#EDE7CE",c2:"#C6BC96",z:{N:[10,2],E:[11,2],W:[11,2],S:[11,2],HM:[6,10],KA:[6,11],LA:[7,9],NE:[11,2]}},
+ {n:"Cabbage",l:"Patta gobhi",t:"veg",s:"round",c:"#9DBE72",c2:"#6D8C46",z:{N:[11,2],E:[11,2],W:[11,2],S:[10,2],HM:[5,10],KA:[6,11],LA:[6,10],NE:[11,3]}},
+ {n:"Carrot",l:"Gajar",t:"veg",s:"taper",c:"#E2711D",c2:"#AB4A03",z:{N:[11,2],W:[11,2],E:[11,2],S:[12,2],KA:[10,12],LA:[8,10],HM:[10,1],NE:[12,2]}},
+ {n:"Radish",l:"Mooli",t:"veg",s:"taper",c:"#F0EDE4",c2:"#C2BCA8",z:{N:[10,2],E:[10,1],W:[10,1],S:[10,1],KA:[9,12],LA:[7,9],HM:[10,1],NE:[11,2]}},
+ {n:"Turnip",l:"Shalgam",t:"veg",s:"root",c:"#E4DCE8",c2:"#9C77B0",z:{N:[11,1],KA:[10,2],LA:[8,10],HM:[10,1]}},
+ {n:"Green peas",l:"Matar",t:"veg",s:"pod",c:"#5FA044",c2:"#36701F",z:{N:[11,2],E:[11,2],W:[11,1],HM:[7,10],KA:[5,7],LA:[7,9],NE:[12,2]}},
+ {n:"Spinach",l:"Palak",t:"veg",s:"leafy",c:"#37793C",c2:"#245424",z:{N:[10,3],E:[10,2],W:[10,2],S:[11,2],KA:[3,11],LA:[6,3],HM:[10,3],NE:[11,2]}},
+ {n:"Fenugreek greens",l:"Methi",t:"veg",s:"leafy",c:"#4C8B3C",c2:"#31641F",z:{N:[10,2],W:[10,2],E:[11,2],HM:[10,2]}},
+ {n:"Mustard greens",l:"Sarson da saag",t:"veg",s:"leafy",c:"#5E9A2E",c2:"#3C6E12",z:{N:[11,2],NE:[11,2],HM:[11,2],E:[11,1]}},
+ {n:"Chenopodium greens",l:"Bathua",t:"veg",s:"leafy",c:"#6E9459",c2:"#4A6C36",z:{N:[11,2]}},
+ {n:"Amaranth greens",l:"Chaulai",t:"veg",s:"leafy",c:"#8C3A52",c2:"#5E1E33",z:{N:[3,6],S:[5,9],W:[6,9],E:[4,8]}},
+ {n:"Bottle gourd",l:"Lauki",t:"veg",s:"gourd",c:"#8FB04E",c2:"#5F7C26",z:{N:[4,9],W:[3,9],S:[3,10],E:[4,9],NE:[4,9],KA:[7,9],HM:[6,9]}},
+ {n:"Ridge gourd",l:"Turai",t:"veg",s:"gourd",c:"#6E9638",c2:"#456418",z:{N:[5,9],S:[4,9],W:[5,9],E:[5,9],NE:[5,9]}},
+ {n:"Bitter gourd",l:"Karela",t:"veg",s:"bitter",c:"#5E8A2A",c2:"#3A5C0E",z:{N:[5,9],W:[4,9],S:[3,10],E:[4,9],NE:[4,9]}},
+ {n:"Pointed gourd",l:"Parwal",t:"veg",s:"gourd",c:"#78A044",c2:"#4E6C20",z:{E:[4,9],N:[5,8],NE:[4,8]}},
+ {n:"Ash gourd",l:"Petha",t:"veg",s:"round",c:"#A8BFA0",c2:"#748C6C",z:{S:[10,2],W:[9,12],NE:[7,10],N:[9,11]}},
+ {n:"Pumpkin",l:"Kaddu",t:"veg",s:"round",c:"#DE7A1C",c2:"#A85202",z:{N:[5,9],S:[6,10],E:[4,9],NE:[6,10],HM:[8,10],KA:[8,10]}},
+ {n:"Round gourd",l:"Tinda",t:"veg",s:"round",c:"#87A84E",c2:"#5C7A26",z:{N:[4,7]}},
+ {n:"Okra",l:"Bhindi",t:"veg",s:"okra",c:"#5C9430",c2:"#3A6812",z:{N:[4,9],W:[4,9],S:[3,10],E:[4,9],NE:[4,9],KA:[7,9],HM:[6,9]}},
+ {n:"Cluster beans",l:"Gavar",t:"veg",s:"pod",c:"#7CA33E",c2:"#52701C",z:{W:[7,10],S:[6,9],N:[7,10]}},
+ {n:"French beans",l:"Frans bean",t:"veg",s:"pod",c:"#4E9440",c2:"#2E6822",z:{HM:[6,9],KA:[6,9],LA:[7,9],S:[10,2],N:[11,2]}},
+ {n:"Cowpea pods",l:"Lobia phali",t:"veg",s:"pod",c:"#93B04E",c2:"#657C26",z:{N:[6,9],S:[6,9],E:[6,9],NE:[6,9]}},
+ {n:"Brinjal",l:"Baingan",t:"veg",s:"brinjal",c:"#5B2E6E",c2:"#391748",z:{N:[10,3],W:[9,2],S:[10,3],E:[10,2],NE:[10,3],KA:[7,9],HM:[7,10]}},
+ {n:"Tomato",l:"Tamatar",t:"veg",s:"round",c:"#D2352C",c2:"#9C1A14",z:{N:[11,3],W:[11,2],S:[11,2],E:[11,2],HM:[6,9],KA:[7,9],LA:[7,9],NE:[11,3]}},
+ {n:"Cucumber",l:"Kheera",t:"veg",s:"okra",c:"#4E8C3A",c2:"#2E641E",z:{N:[4,8],W:[3,8],S:[3,9],E:[4,8],NE:[5,8],KA:[6,8],HM:[6,9],LA:[7,9]}},
+ {n:"Colocasia",l:"Arbi",t:"veg",s:"tuber",c:"#8A6B4A",c2:"#5C4326",z:{N:[8,11],E:[7,10],W:[7,10],S:[8,10],NE:[6,10],HM:[8,10]}},
+ {n:"Elephant foot yam",l:"Jimikand",t:"veg",s:"tuber",c:"#7A6244",c2:"#4E3C22",z:{E:[10,1],S:[11,2],N:[10,12],W:[10,1]}},
+ {n:"Sweet potato",l:"Shakarkandi",t:"veg",s:"taper",c:"#B4553E",c2:"#7E3120",z:{N:[11,1],E:[11,2],W:[11,2],S:[11,2],NE:[11,2]}},
+ {n:"Green garlic",l:"Hara lehsun",t:"veg",s:"stalkthin",c:"#6E9E3E",c2:"#48701C",z:{N:[12,2],W:[11,1]}},
+ {n:"Spring onion",l:"Hara pyaz",t:"veg",s:"stalkthin",c:"#5E9444",c2:"#3A6820",z:{N:[12,2],HM:[9,11]}},
+ {n:"Drumstick",l:"Sahjan",t:"veg",s:"stalkthin",c:"#7CA044",c2:"#506C1E",z:{S:[2,5],W:[2,5],N:[3,5],E:[2,4]}},
+ {n:"Green chickpeas",l:"Chholia",t:"veg",s:"pod",c:"#6E9E2E",c2:"#48700C",z:{N:[1,3]}},
+ {n:"Sweet corn",l:"Bhutta",t:"veg",s:"cob",c:"#E8C244",c2:"#B4900C",z:{N:[7,9],HM:[8,10],KA:[7,9],W:[7,9],E:[7,9],NE:[6,9]}},
+ {n:"Capsicum",l:"Shimla mirch",t:"veg",s:"capsicum",c:"#4E9440",c2:"#2E6822",z:{N:[11,3],HM:[6,9],KA:[7,9],LA:[7,9]}},
+ {n:"Beetroot",l:"Chukandar",t:"veg",s:"root",c:"#8A1E44",c2:"#5C0A28",z:{N:[11,2],W:[11,2],S:[11,2],E:[11,2]}},
+ {n:"Kohlrabi",l:"Ganth gobhi",t:"veg",s:"round",c:"#A8BC6E",c2:"#788C42",z:{KA:[4,11],N:[11,2]}},
+ {n:"Bamboo shoot",l:"Bhalukoria",t:"veg",s:"stalk",c:"#C4B87E",c2:"#948A50",z:{NE:[6,9],E:[7,9]}},
+ {n:"Lotus stem",l:"Nadru",t:"veg",s:"stalk",c:"#C2A878",c2:"#8E7448",z:{KA:[9,3],N:[10,1]}}
+];
+
+/* Each item gets a silhouette of its own — shape carries identity, colour only reinforces it. */
+const SHAPE_FIX={
+  "Apple":"apple","Pomegranate":"pomegranate","Guava":"guava","Tomato":"tomato",
+  "Peach":"stone","Apricot":"stone","Plum":"stone",
+  "Pumpkin":"pumpkin","Cabbage":"cabbage","Kohlrabi":"kohlrabi",
+  "Indian gooseberry":"amla","Mangosteen":"mangosteen","Wood apple":"woodapple",
+  "Sapota":"sapota","Round gourd":"tinda","Ash gourd":"ashgourd","Indian jujube":"smalloval",
+  "Grapes":"grapes","Cherry":"cherry","Seabuckthorn":"twigberry",
+  "Mulberry":"aggregate","Java plum":"ovalberry",
+  "Custard apple":"custardapple","Litchi":"litchi",
+  "Bottle gourd":"lauki","Ridge gourd":"turai","Pointed gourd":"parwal","Pear":"pear","Cucumber":"cucumber",
+  "Fenugreek greens":"methi","Mustard greens":"mustard",
+  "French beans":"slimpod","Cluster beans":"clusterpod","Cowpea pods":"longpod","Tamarind":"tamarind",
+  "Radish":"radish","Sweet potato":"sweetpotato","Colocasia":"arbi","Elephant foot yam":"yam",
+  "Drumstick":"drumstick","Green garlic":"greengarlic","Spring onion":"springonion",
+  "Lotus stem":"lotus","Bamboo shoot":"bambooshoot",
+  "Strawberry":"strawberry","Muskmelon":"netmelon","Beetroot":"beetroot"
+};
+DATA.forEach(d=>{if(SHAPE_FIX[d.n]) d.s=SHAPE_FIX[d.n];});
+
+/* Tags (space-separated when a dish belongs to several regions):
+   N North · LA Ladakh · KA Kashmir · HM Himachal/Uttarakhand · W West · S South · E East · NE Northeast · IN pan-Indian · INT international */
+const R={
+ "Mango":[["Aam ras","Poured thick, eaten with puri","W"],["Mango pickle","Aam ka achaar, sun-cured in oil","IN"],["Aam panna","Raw mango cooler for the heat","IN"],["Mango lassi","Cold, thick, yoghurt-based","N"],["Ambe upkari","Konkani raw mango curry","W"],["Amer chutney","Bengali sweet-sour, end of the meal","E"],["Aam diya masor tenga","Assamese sour fish curry with raw mango","NE"],["Mango sticky rice","Thai, with coconut cream","INT"],["Mango salsa","Diced with lime and chilli","INT"]],
+ "Litchi":[["Litchi sherbet","Chilled, lightly sweetened","E"],["Litchi kheer","Milk pudding","IN"],["Litchi sorbet","Frozen, three ingredients","INT"],["Litchi and mint cooler","Muddled, over ice","INT"]],
+ "Guava":[["Amrood ki sabzi","Dry curry with cumin","N"],["Guava chutney","Sweet, hot, rough-ground","IN"],["Perad","Goan guava cheese, set in slabs","W"],["Guava chaat","Raw, black salt and chilli","IN"],["Guava paste","Latin American, with cheese","INT"]],
+ "Custard apple":[["Sitaphal basundi","Maharashtrian reduced milk","W"],["Sitaphal rabdi","Slow-cooked, cardamom","N"],["Custard apple ice cream","No-churn, pulp folded in","INT"],["Cherimoya smoothie","Blended with milk","INT"]],
+ "Java plum":[["Jamun sherbet","Deep purple, black salt","IN"],["Jamun chutney","Sour, for rice","E"],["Kala khatta","Crushed ice syrup","IN"],["Jamun vinegar","Slow-fermented, keeps months","IN"],["Jamun sorbet","Frozen, tart","INT"]],
+ "Watermelon":[["Tarbooz sherbet","Chilled with mint","IN"],["Watermelon rind sabzi","Uses the part you throw","N"],["Tarbooz chaat","Black salt and lime","IN"],["Watermelon feta salad","Greek, salty and sweet","INT"],["Agua fresca","Mexican, blended and strained","INT"]],
+ "Muskmelon":[["Kharbooja sherbet","With melon seeds ground in","N"],["Magaz ki barfi","Melon-seed sweet","N"],["Melon salad","With mint and lime","INT"],["Melon and cucumber cooler","Blended cold","INT"]],
+ "Pomegranate":[["Anar raita","Seeds in yoghurt","N"],["Anardana chutney","Dried seed, Himachali","HM"],["Anar ka juice","Fresh pressed, black salt","IN"],["Fattoush with anar","Levantine, bread salad","INT"],["Muhammara","Syrian pepper-walnut dip","INT"]],
+ "Orange":[["Santra barfi","Milk sweet, Nagpur","W"],["Orange peel candy","Nothing wasted","IN"],["Orange chutney","Sweet with ginger","IN"],["Orange marmalade","Set with the peel in","INT"]],
+ "Kinnow":[["Kinnow juice","Punjabi winter, black salt","N"],["Kinnow chaat","Segments with chaat masala","N"],["Kinnow marmalade","Slow-set, slightly bitter","INT"],["Citrus salad","With pomegranate and mint","INT"]],
+ "Sweet lime":[["Mosambi juice","Fresh, with a pinch of salt","IN"],["Mosambi salad","Chaat masala and coriander","IN"],["Sweet lime sherbet","Chilled, lightly sugared","W"],["Citrus curd","Set with egg and butter","INT"]],
+ "Apple":[["Apple chutney","Himachali, spiced with ginger","HM"],["Seb ka murabba","Sugar-preserved, whole","N"],["Apple halwa","Slow-cooked in ghee","N"],["Apple kheer","Grated into thickened milk","IN"],["Apple pie","Baked, cinnamon","INT"],["Tarte tatin","French, caramelised upside down","INT"]],
+ "Apricot":[["Khubani ka meetha","Hyderabadi, with cream","S"],["Chuli jam","Apricot jam, made across Ladakh","LA"],["Phating","Sun-dried apricots, kept for winter","LA"],["Apricot chutney","Sweet and hot","HM"],["Apricot tart","Baked, almond base","INT"]],
+ "Plum":[["Plum chutney","Tangy, keeps through winter","HM"],["Aloo bukhara ki launji","Sweet-sour, North Indian","N"],["Plum jam","Small batch, low sugar","INT"],["Plum crumble","Baked, oat topping","INT"]],
+ "Peach":[["Aadu ki chutney","Sweet-hot, Himachali","HM"],["Peach murabba","Preserved in syrup","N"],["Peach compote","Spooned over curd","INT"],["Grilled peaches","Charred, with cream","INT"]],
+ "Pear":[["Nashpati halwa","Slow-cooked, cardamom","N"],["Pear chutney","With ginger and chilli","HM"],["Poached pears","In spiced syrup","INT"],["Pear and walnut salad","With blue cheese","INT"]],
+ "Cherry":[["Cherry jam","Kashmiri, small batch","KA"],["Cherry chutney","Sour, for meat","KA"],["Clafoutis","French baked custard","INT"],["Cherry compote","Spooned over anything","INT"]],
+ "Seabuckthorn":[["Leh berry juice","Tart, Ladakhi staple","LA"],["Tsestalulu jam","Hand-set, very sour","LA"],["Seabuckthorn tea","Hot, with honey","LA HM"],["Seabuckthorn cordial","Diluted, over ice","INT"]],
+ "Grapes":[["Angoor ki chutney","Sweet-sour, Maharashtrian","W"],["Angoor rabri","Grapes in thickened milk","N"],["Grape juice","Fresh pressed","IN"],["Grape and paneer salad","With black pepper","IN"],["Schiacciata all'uva","Tuscan grape bread","INT"]],
+ "Sapota":[["Chikoo milkshake","Thick, cold, no sugar needed","IN"],["Chikoo halwa","Slow-reduced with ghee","W"],["Chikoo kheer","Pulped into milk","IN"],["Sapodilla smoothie","With banana","INT"]],
+ "Sugarcane":[["Ganne ka ras","Street-style, lime and ginger","IN"],["Rasiyaav","Bihari rice in fresh jaggery, for Chhath","E"],["Ganne ke ras ki kheer","Cooked down with rice","N"],["Sugarcane mojito","Muddled with mint","INT"]],
+ "Indian gooseberry":[["Amla murabba","Sugar-preserved, whole","N"],["Amla chutney","Raw, ground with green chilli","IN"],["Nellikai pachadi","Tamil, in yoghurt","S"],["Amla juice","Morning tonic, very sour","IN"],["Amla pickle","Spiced, set in oil","IN"],["Amlakhi achar","Assamese, mustard oil","NE"]],
+ "Indian jujube":[["Ber chutney","Rajasthani, sweet-hot","N"],["Dried ber","Sun-cured, eaten as snack","IN"],["Ilanthai vadai","Tamil sweet ber cake","S"],["Jujube tea","Korean, slow-simmered","INT"]],
+ "Phalsa":[["Phalsa sherbet","Deep purple, summer","N"],["Phalsa chutney","Sour and sharp","N"],["Phalsa granita","Frozen, scraped","INT"]],
+ "Pineapple":[["Pineapple rasam","Tamil, sweet and sour","S"],["Ananas sasav","Goan, ground mustard","W"],["Anarosor chutney","Assamese pineapple chutney","NE"],["Pineapple pachadi","Kerala, in yoghurt","S"],["Pineapple kesari","Semolina sweet, Karnataka","S"],["Grilled pineapple","Charred, with chilli salt","INT"]],
+ "Jackfruit":[["Kathal biryani","Raw jackfruit, layered","N"],["Chakka pradhaman","Kerala payasam with jaggery","S"],["Kathal ki sabzi","Dry, heavily spiced","N"],["Enchor chingri","Bengali jackfruit with prawn","E"],["Kathal chips","Fried thin in coconut oil","S"],["Pulled jackfruit","In buns, barbecue sauce","INT"]],
+ "Strawberry":[["Strawberry jam","Small batch, lemon","INT"],["Strawberry milkshake","Cold and thick","IN"],["Strawberry shrikhand","Folded into hung curd","W"],["Eton mess","Cream, meringue, crushed berries","INT"]],
+ "Mulberry":[["Shahtoot sherbet","Cooling, lightly sweet","N"],["Mulberry jam","Slow-set","KA"],["Mulberry crumble","Baked, oat top","INT"]],
+ "Tamarind":[["Imli chutney","Sweet-sour, for every chaat","IN"],["Puliyodarai","Tamil tamarind rice","S"],["Tamarind rasam","Thin, peppery","S"],["Imli ka sharbat","Chilled, black salt","N"],["Pad thai","Thai, tamarind in the sauce","INT"]],
+ "Mangosteen":[["Mangosteen juice","Fresh, lightly chilled","S"],["Mangosteen salad","With lime and chilli","INT"],["Mangosteen sorbet","Frozen, delicate","INT"]],
+ "Wood apple":[["Bael sherbet","Pulped, summer cooler","N"],["Bael murabba","Preserved in syrup","N"],["Bela pana","Odia, with pepper and jaggery","E"],["Wood apple smoothie","Sri Lankan, with coconut milk","INT"]],
+ "Cauliflower":[["Gobhi paratha","Stuffed, Punjabi winter","N"],["Aloo gobhi","Dry, turmeric-heavy","N"],["Phulkopir dalna","Bengali, in light gravy","E"],["Gobhi Manchurian","Indo-Chinese, saucy","IN"],["Gobhi ka achaar","Winter pickle with carrot","N"],["Gobhi 65","South Indian fry","S"],["Roast cauliflower","Whole, charred, tahini","INT"],["Cauliflower soup","Blended, cream-finished","INT"]],
+ "Cabbage":[["Cabbage thoran","Kerala, coconut and curry leaf","S"],["Patta gobhi sabzi","Dry, with peas","N"],["Bandhakopir ghonto","Bengali, with potato","E"],["Cabbage pakora","Fried in besan","IN"],["Singju","Manipuri shredded salad","NE"],["Momos","Steamed, cabbage filling","LA HM NE"],["Kimchi","Korean, fermented","INT"],["Coleslaw","Raw, mayo-dressed","INT"]],
+ "Carrot":[["Gajar ka halwa","The winter one, slow-cooked","N"],["Gajar matar sabzi","Everyday dry curry","N"],["Kanji","Fermented carrot drink, Holi","N"],["Carrot pickle","Mustard oil, Punjabi","N"],["Carrot poriyal","Tamil, with coconut","S"],["Carrot soup","Blended with ginger","INT"],["Carrot cake","Baked, cream cheese","INT"]],
+ "Radish":[["Mooli paratha","Stuffed, squeeze the water out","N"],["Mooli ki sabzi","Cooked with its own greens","N"],["Mooli raita","Grated into yoghurt","N"],["Mullangi sambar","Tamil, in lentils","S"],["Mulo chechki","Bengali, dry-fried","E"],["Thechwani","Garhwali crushed radish curry","HM"],["Sinki","Sikkimese fermented radish","NE"],["Thukpa","Noodle soup with radish and greens","LA NE"],["Daikon salad","Japanese, thin-sliced","INT"]],
+ "Turnip":[["Shalgam ki sabzi","Slow-cooked, sweetish","N"],["Gogji nadur","Kashmiri turnip with lotus stem","KA"],["Gogji maaz","Kashmiri turnip with mutton","KA"],["Skyu","Ladakhi hand-pulled pasta stew with turnip","LA"],["Turnip gratin","Baked with cream","INT"]],
+ "Green peas":[["Matar paneer","The standard order","N"],["Nimona","Awadhi ground-pea curry","N"],["Matar kachori","Fried, stuffed","N"],["Koraishutir kochuri","Bengali pea-stuffed bread","E"],["Green pea pulao","Simple, ghee-fried","IN"],["Pea and mint soup","Blended, bright green","INT"],["Risi e bisi","Venetian rice and peas","INT"]],
+ "Spinach":[["Palak paneer","Ground smooth, creamy","N"],["Palak dal","Everyday, garlic tadka","IN"],["Palong shaak bhaja","Bengali, quick-fried","E"],["Keerai masiyal","Tamil, mashed greens","S"],["Palak pakora","Whole leaves in besan","N"],["Saag aloo","With potato, dry","N"],["Kafuli","Garhwali spinach and fenugreek stew","HM"],["Chhutagi","Ladakhi pasta in broth with greens","LA"],["Spanakopita","Greek, in filo","INT"],["Spinach and ricotta","Folded into pasta","INT"]],
+ "Fenugreek greens":[["Methi thepla","Gujarati, keeps for days","W"],["Aloo methi","Dry, slightly bitter","N"],["Methi malai matar","Creamy, with peas","N"],["Methi muthia","Gujarati steamed dumpling","W"],["Methi pulao","Rice with fresh leaves","IN"],["Methi chicken","Dry-fried, fenugreek-heavy","N"]],
+ "Mustard greens":[["Sarson da saag","With makki di roti and white butter","N"],["Saag paratha","Made from yesterday's saag","N"],["Lai xaak bhaji","Assamese stir-fried mustard greens","NE"],["Gundruk","Sikkimese fermented greens","NE"],["Galho","Naga rice stew with greens","NE"],["Lai ka saag","Kumaoni mustard greens","HM"],["Mustard greens stir-fry","Garlic, quick heat","INT"]],
+ "Chenopodium greens":[["Bathua raita","Boiled, ground into yoghurt","N"],["Bathua paratha","Winter flatbread","N"],["Bathua ka saag","With garlic and ghee","N"],["Bathua dal","Cooked into lentils","N"]],
+ "Amaranth greens":[["Thotakura pappu","Andhra, with toor dal","S"],["Chaulai ki sabzi","Dry, garlic-heavy","N"],["Cheera thoran","Kerala, with coconut","S"],["Laal saag bhaja","Bengali, quick-fried","E"],["Callaloo","Caribbean, stewed greens","INT"]],
+ "Bottle gourd":[["Lauki kofta","Fried dumplings in gravy","N"],["Doodhi halwa","Milk-cooked sweet","W"],["Lauki chana dal","Everyday, light","N"],["Lauki thepla","Grated into the dough","W"],["Sorakaya pappu","Andhra, in dal","S"],["Lauki raita","Grated, boiled, cooled","N"]],
+ "Ridge gourd":[["Turai ki sabzi","Simple, dry, cumin","N"],["Beerakaya pachadi","Andhra roasted chutney","S"],["Peerkangai kootu","Tamil, with lentils","S"],["Jhinge posto","Bengali, with poppy seed","E"],["Ridge gourd stir-fry","Garlic and soy","INT"]],
+ "Bitter gourd":[["Bharwa karela","Stuffed with onion masala","N"],["Pavakkai pitla","Tamil, tamarind-based","S"],["Karela chips","Sliced thin, deep-fried","IN"],["Uchche bhaja","Bengali, first thing on the plate","E"],["Karela ki launji","Sweet-sour, Rajasthani","N"],["Goya champuru","Okinawan stir-fry with egg","INT"]],
+ "Pointed gourd":[["Parwal ki mithai","Bengali, stuffed with khoya","E"],["Aloo parwal","Bihari, dry and spiced","E"],["Potoler dorma","Bengali, stuffed and fried","E"],["Parwal ki sabzi","Everyday, light gravy","N"]],
+ "Ash gourd":[["Petha","Agra's sweet, translucent","N"],["Olan","Kerala, in coconut milk","S"],["Boodida gummadikaya pulusu","Andhra tamarind stew","S"],["Haah aru kumura","Assamese duck with ash gourd","NE"],["Winter melon soup","Chinese, clear broth","INT"]],
+ "Pumpkin":[["Kaddu ki sabzi","Sweet-sour, with puri","N"],["Kumro chhakka","Bengali, with chickpeas","E"],["Mathanga erissery","Kerala, coconut and cumin","S"],["Pumpkin sambar","Tamil, everyday","S"],["Ronga lau bhaji","Assamese pumpkin stir-fry","NE"],["Pumpkin soup","Roasted, blended","INT"],["Pumpkin pie","Baked, spiced","INT"]],
+ "Round gourd":[["Tinda masala","Dry, North Indian","N"],["Bharwa tinda","Stuffed with masala","N"],["Tinda aloo","Everyday light curry","N"]],
+ "Okra":[["Bhindi masala","Dry, onion and amchur","N"],["Kurkuri bhindi","Sliced thin, crisp-fried","N"],["Vendakkai sambar","Tamil, in lentils","S"],["Bharwa bhindi","Stuffed whole","N"],["Dahi bhindi","Fried, then into yoghurt","N"],["Dherosh bhaja","Bengali, quick-fried","E"],["Gumbo","Louisiana, thick stew","INT"],["Bamya","Levantine okra stew","INT"]],
+ "Cluster beans":[["Gavar nu shaak","Gujarati, everyday","W"],["Guvar dhokli","One-pot with dumplings","W"],["Goru chikkudu fry","Andhra, dry","S"],["Cluster bean stir-fry","Garlic, quick","INT"]],
+ "French beans":[["Beans poriyal","Tamil, with coconut","S"],["Beans aloo sabzi","Dry, everyday","N"],["Beans foogath","Goan, coconut and onion","W"],["Green bean casserole","American, baked","INT"],["Beans almondine","French, buttered","INT"]],
+ "Cowpea pods":[["Lobia phali sabzi","Dry, with garlic","N"],["Payar thoran","Kerala, coconut","S"],["Alasande fry","Karnataka, dry-spiced","S"],["Long bean stir-fry","Sichuan, dry-fried","INT"]],
+ "Brinjal":[["Baingan bharta","Smoked over flame, mashed","N"],["Bharli vangi","Maharashtrian, stuffed","W"],["Begun bhaja","Bengali, sliced and fried","E"],["Ennai kathirikkai","Tamil, sesame gravy","S"],["Gutti vankaya","Andhra, stuffed with peanut","S"],["Bengena pitika","Assamese roasted mash","NE"],["Baba ganoush","Levantine, smoked dip","INT"],["Melanzane parmigiana","Italian, baked in layers","INT"]],
+ "Tomato":[["Tomato chutney","South Indian, for idli","S"],["Tamatar ki launji","Rajasthani, sweet-sour","N"],["Tomato rasam","Thin, peppery, drinkable","S"],["Tomato pachadi","Andhra, roasted","S"],["Bilahi tenga","Assamese sour fish curry with tomato","NE"],["Shakshuka","Levantine, eggs poached in sauce","INT"],["Tomato passata","Italian, cooked down and stored","INT"]],
+ "Cucumber":[["Kheera raita","Grated, cumin","N"],["Vellarikka pachadi","Kerala, in yoghurt","S"],["Kakdi koshimbir","Maharashtrian, peanut","W"],["Cucumber salad","Lime, chilli, black salt","IN"],["Kumaoni raita","Grated, with mustard seed","HM"],["Tzatziki","Greek, garlic and dill","INT"],["Smashed cucumber","Sichuan, garlic and vinegar","INT"]],
+ "Colocasia":[["Arbi masala","Dry, ajwain-heavy","N"],["Patra","Gujarati, rolled leaves steamed","W"],["Kochu bata","Bengali, mashed with mustard","E"],["Chembu mezhukkupuratti","Kerala, dry-fried","S"],["Anishi","Ao Naga fermented taro leaf with pork","NE"],["Gaderi ki sabzi","Kumaoni colocasia curry","HM"],["Taro fritters","Crisp-fried, Pacific","INT"]],
+ "Elephant foot yam":[["Oal chokha","Bihari, roasted and mashed","E"],["Suran ki sabzi","Dry, spiced","N"],["Chena mezhukkupuratti","Kerala, dry-fried","S"],["Oal ka achaar","Bihari pickle","E"],["Yam croquettes","Fried, West African","INT"]],
+ "Sweet potato":[["Shakarkandi chaat","Roasted in ash, chaat masala","N"],["Sweet potato halwa","Slow-cooked in ghee","N"],["Ranga aloo pitika","Assamese mash","NE"],["Sakkaravalli kizhangu","Tamil, steamed and spiced","S"],["Roast sweet potato","Wedges, paprika","INT"],["Sweet potato pie","American, baked","INT"]],
+ "Green garlic":[["Hara lehsun aloo","Punjabi winter dry curry","N"],["Green garlic chutney","Sharp, raw-ground","W"],["Green garlic soup","Blended, light","INT"]],
+ "Spring onion":[["Hara pyaz paratha","Stuffed flatbread","N"],["Spring onion sabzi","With potato, dry","N"],["Scallion pancakes","Chinese, layered and fried","INT"],["Pajeon","Korean, in batter","INT"]],
+ "Drumstick":[["Drumstick sambar","Tamil, the standard","S"],["Sahjan ki sabzi","Bihari, light gravy","E"],["Muringakka theeyal","Kerala, roasted coconut","S"],["Moringa leaf poriyal","Leaves with coconut","S"],["Moringa soup","Filipino, with ginger","INT"]],
+ "Green chickpeas":[["Chholia aloo","Punjabi, winter only","N"],["Hara chana chaat","Raw, lime and chaat masala","N"],["Hara chana pulao","Rice with fresh chickpeas","N"],["Green chickpea hummus","Blended, bright","INT"]],
+ "Sweet corn":[["Bhutta","Charcoal-roasted, lime and chilli salt","IN"],["Makai ki roti","With sarson da saag","N"],["Corn pulao","Simple rice","IN"],["Makai paneer","Creamy, restaurant-style","N"],["Corn pakora","Fried, monsoon food","IN"],["Elote","Mexican, mayo and cheese","INT"],["Corn chowder","Thick, American","INT"]],
+ "Capsicum":[["Bharwa shimla mirch","Stuffed with potato","N"],["Capsicum rice","Quick one-pot","S"],["Kudamilagai poriyal","Tamil capsicum stir-fry","S"],["Capsicum besan sabzi","Dry, gram flour coating","N"],["Roasted peppers","In oil, Mediterranean","INT"]],
+ "Beetroot":[["Beetroot thoran","Kerala, coconut","S"],["Chukandar raita","Grated into yoghurt","N"],["Beetroot halwa","Slow-cooked, like gajar","N"],["Beetroot poriyal","Tamil, dry","S"],["Vegetable chop","Kolkata beet-and-carrot croquette","E"],["Borscht","Eastern European, beet soup","INT"],["Roast beetroot salad","With feta and walnut","INT"]],
+ "Kohlrabi":[["Monj haak","Kashmiri kohlrabi and greens","KA"],["Ganth gobhi sabzi","Dry, North Indian","N"],["Kohlrabi salad","Raw, shredded, lime","INT"],["Kohlrabi slaw","With apple and mustard","INT"]],
+ "Bamboo shoot":[["Khorisa","Assamese, fermented and sour","NE"],["Smoked pork with bamboo shoot","Naga, slow-cooked","NE"],["Soibum ooti","Manipuri, with peas","NE"],["Chakhwi","Tripuri bamboo shoot stew","NE"],["Bai","Mizo vegetable stew with bamboo shoot","NE"],["Karil ki sabzi","Jharkhand, monsoon only","E"],["Bamboo shoot stir-fry","Thai, with basil","INT"]],
+ "Lotus stem":[["Nadru yakhni","Kashmiri, yoghurt gravy","KA"],["Nadru monje","Kashmiri fried fritters","KA"],["Kamal kakdi ki sabzi","Dry, spiced","N"],["Bhein ke kebab","Sindhi, minced and fried","W"],["Thambou singju","Manipuri lotus stem salad","NE"],["Lotus root chips","Sliced thin, fried","INT"],["Renkon kinpira","Japanese, soy and sesame","INT"]]
+};
+
+
+/* Where each item is actually shipped FROM to other states.
+   Built from state production rankings (NHB, APEDA, MoSPI, 2021-23 state data):
+   a zone counts only if it holds a leading producer that trucks produce out.
+   Empty = stays local (greens, most gourds, jamun, seabuckthorn...), never shown as "around". */
+const SUPPLY={
+ "Mango":["N","S","W","E"],"Litchi":["E","N"],"Guava":["N","S","W"],"Custard apple":["W","S"],
+ "Watermelon":["S","N","W"],"Muskmelon":["N","S","W"],"Pomegranate":["W","S"],"Orange":["W","NE"],
+ "Kinnow":["N"],"Sweet lime":["S","W"],"Apple":["KA","HM"],"Apricot":["HM","LA"],"Plum":["HM","KA"],
+ "Peach":["HM","N"],"Pear":["HM","KA","N"],"Cherry":["KA","HM"],"Grapes":["W","S"],"Sapota":["W","S"],
+ "Indian gooseberry":["N","W"],"Indian jujube":["N","W"],"Pineapple":["NE","S"],"Jackfruit":["S","E"],
+ "Strawberry":["W"],
+ "Cauliflower":["E","W","N","HM"],"Cabbage":["E","W","NE","HM"],"Carrot":["N","E","W"],
+ "Green peas":["N","W","HM","E"],"Pointed gourd":["E"],"Okra":["W","E"],"French beans":["HM","S"],
+ "Tomato":["W","S","E","HM"],"Drumstick":["S"],"Capsicum":["E","N","S","W","HM","KA"],"Lotus stem":["KA"]
+};
+/* Some items only travel to nearby markets, not the whole country */
+const REACH={"Lotus stem":["N","HM"],"Apricot":["N","HM"],"Pointed gourd":["N","W"]};
+
+const $=id=>document.getElementById(id);
+const nowMonth=new Date().getMonth()+1;
+let month=nowMonth, city="Punjab";
+try{const s=localStorage.getItem("mandi.state"); if(s&&STATES.some(c=>c[0]===s)) city=s;}catch(e){}
+
+const zoneOf=n=>(STATES.find(c=>c[0]===n)||[,"N"])[1];
+const regionOf=zoneOf;
+const inRange=(m,[s,e])=>s<=e?(m>=s&&m<=e):(m>=s||m<=e);
+const prev=m=>m===1?12:m-1;
+function statusOf(it,z,m){const r=it.z[z]; if(!r) return null; const[s,e]=r;
+  if(m===e) return "last"; if(m===s) return "new"; if(inRange(m,r)) return "peak";
+  if(m===prev(s)) return "soon"; return null;}
+const CHIP={peak:"In season",new:"Just arrived",last:"Last month"};
+const yt=q=>"https://www.youtube.com/results?search_query="+encodeURIComponent("how to make "+q);
+
+function card(it,st){
+  const el=document.createElement("div");
+  el.className="card"+(st==="last"?" is-last":"");
+  el.innerHTML=art(it)+'<div class="body"><div class="n"></div><div class="l"></div>'+
+    '<button class="rec-btn" type="button">Recipes</button></div>';
+  el.querySelector(".art").insertAdjacentHTML("beforeend",'<span class="chip '+st+'">'+CHIP[st]+"</span>");
+  el.querySelector(".n").textContent=it.n;
+  el.querySelector(".l").textContent=it.l;
+  el.querySelector(".rec-btn").addEventListener("click",()=>openRecipes(it));
+  return el;
+}
+function group(title,rows){
+  const sec=document.createElement("section"); sec.className="group";
+  const head=document.createElement("div"); head.className="group-head";
+  const h=document.createElement("h2"); h.textContent=title;
+  const c=document.createElement("span"); c.textContent=rows.length+(rows.length===1?" item":" items");
+  head.append(h,c);
+  const grid=document.createElement("div"); grid.className="grid";
+  const order={last:0,new:1,peak:2};
+  rows.slice().sort((a,b)=>(order[a.st]-order[b.st])||a.it.n.localeCompare(b.it.n))
+      .forEach(r=>grid.appendChild(card(r.it,r.st)));
+  sec.append(head,grid); return sec;
+}
+const names=rows=>rows.map(r=>r.it.n).sort((a,b)=>a.localeCompare(b));
+
+function render(){
+  const zone=zoneOf(city);
+  const rows=DATA.map(it=>({it,st:statusOf(it,zone,month)})).filter(x=>x.st);
+  const here=rows.filter(r=>r.st!=="soon");
+  const soon=rows.filter(r=>r.st==="soon");
+  const last=here.filter(r=>r.st==="last");
+
+  const h=$("headline"); h.textContent="";
+  h.append(document.createTextNode("In season "),
+    Object.assign(document.createElement("em"),{textContent:"near you."}));
+  $("subline").textContent=here.length
+    ? here.length+(here.length===1?" thing, ":" things, ")+MFULL[month-1]+", "+city+". Tap any of them for what to cook."
+    : "Nothing is coming off the fields in "+city+" in "+MFULL[month-1]+".";
+
+  const flags=$("flags"); flags.innerHTML="";
+  flags.className=(last.length&&soon.length)?"two":"";
+  const panel=(kind,label,title,why,rows)=>{
+    const sec=document.createElement("section");
+    sec.className="panel"+(kind?" "+kind:"");
+    sec.innerHTML='<div class="panel-head"><span class="k">'+label+'</span><h3></h3></div>'+
+      '<p class="why"></p><div class="minis"></div>';
+    sec.querySelector("h3").textContent=title;
+    sec.querySelector(".why").textContent=why;
+    const box=sec.querySelector(".minis");
+    rows.slice().sort((a,b)=>a.it.n.localeCompare(b.it.n)).forEach(r=>{
+      const b=document.createElement("button");
+      b.type="button"; b.className="mini";
+      b.innerHTML=art(r.it)+'<div class="mn"></div>';
+      b.querySelector(".mn").textContent=r.it.n;
+      b.addEventListener("click",()=>openRecipes(r.it));
+      box.appendChild(b);
+    });
+    flags.appendChild(sec);
+  };
+  if(last.length) panel("","Last call",
+    last.length+(last.length===1?" thing ends":" things end")+" this month",
+    "After "+MFULL[month-1]+" these are out of season here. What you find later comes from cold storage — dearer, and not worth much.",
+    last);
+  if(soon.length) panel("soon","Next month",
+    soon.length+(soon.length===1?" thing arrives":" things arrive")+" in "+MFULL[month%12],
+    "First of the season. Worth waiting for rather than buying now.",
+    soon);
+
+  const lists=$("lists"); lists.innerHTML="";
+  const fruit=here.filter(r=>r.it.t==="fruit"), veg=here.filter(r=>r.it.t==="veg");
+  if(fruit.length) lists.appendChild(group("Fruit",fruit));
+  if(veg.length) lists.appendChild(group("Vegetables",veg));
+  if(!here.length){
+    const p=document.createElement("p"); p.style.color="var(--muted)";
+    p.textContent="It's between seasons here. What you see on the stall right now has come from storage or from another state. Check next month.";
+    lists.appendChild(p);
+  }
+
+  /* Around, but not local: in season in another zone this month, not here */
+  const localNames=new Set(here.map(r=>r.it.n));
+  const away=DATA.filter(it=>!localNames.has(it.n)).map(it=>{
+    const from=(REACH[it.n]&&!REACH[it.n].includes(zone))?[]:(SUPPLY[it.n]||[]).filter(k=>k!==zone&&it.z[k]&&inRange(month,it.z[k]));
+    return {it,from};
+  }).filter(x=>x.from.length).sort((a,b)=>a.it.n.localeCompare(b.it.n));
+  if(away.length){
+    const sec=document.createElement("section"); sec.className="group away";
+    sec.innerHTML='<div class="group-head"><h2>Around, but not local</h2><span></span></div>'+
+      '<p class="away-why">Shipped in from the regions that grow them commercially, so you will see these on the stall. They have travelled, so they cost more and are rarely at their best. Buy them when they are in season here.</p>'+
+      '<div class="away-grid"></div>';
+    sec.querySelector(".group-head span").textContent=away.length+(away.length===1?" item":" items");
+    if(zone==="LA"&&[12,1,2,3,4].includes(month)){const n=document.createElement("p");n.className="away-why";n.textContent="In winter the roads into Ladakh close, so most of this arrives by air or from storage and is expensive.";sec.querySelector(".away-why").after(n);}
+    const g=sec.querySelector(".away-grid");
+    away.forEach(({it,from})=>{
+      const b=document.createElement("button"); b.type="button"; b.className="away-card";
+      b.innerHTML=art(it)+'<div class="ab"><div class="an"></div><div class="af"></div></div>';
+      b.querySelector(".an").textContent=it.n;
+      b.querySelector(".af").textContent="From "+from.map(k=>ZONES[k]).join(", ");
+      b.addEventListener("click",()=>openRecipes(it,from));
+      g.appendChild(b);
+    });
+    lists.appendChild(sec);
+  }
+  [...$("months").children].forEach((b,i)=>b.setAttribute("aria-pressed",String(i+1===month)));
+}
+
+function openRecipes(it,awayFrom){
+  const hero=$("rHero");
+  hero.innerHTML='<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="--a:'+it.c+';--b:'+(it.c2||"#fff")+'">'+(SHAPE[it.s]||SHAPE.round)()+'</svg>';
+  $("rTitle").textContent=it.n;
+  $("rLocal").textContent=it.l+" · "+(awayFrom
+    ? "not in season in "+city+" now — arriving from "+awayFrom.map(k=>ZONES[k]).join(", ")
+    : "in season now in "+city);
+
+  const reg=regionOf(city);
+  const all=R[it.n]||[];
+  const tagsOf=r=>r[2].split(" ");
+  const local=all.filter(r=>tagsOf(r).includes(reg));
+  const indian=all.filter(r=>!tagsOf(r).includes(reg)&&r[2]!=="INT");
+  const world=all.filter(r=>r[2]==="INT");
+
+  const wrap=$("rGrid"); wrap.innerHTML="";
+  section(wrap,it,"Cooked in "+city,
+    local.length?"How "+REGION[reg]+" uses it.":"", local,
+    "No dish from "+city+" on file for this one yet. That is a gap in the data, not in the kitchen — everything below still works.");
+  section(wrap,it,"From the rest of India","Regional dishes worth borrowing.",indian,"");
+  section(wrap,it,"From elsewhere","The same ingredient, cooked differently.",world,"");
+  $("viewMain").hidden=true; $("viewRecipes").hidden=false;
+  window.scrollTo(0,0);
+}
+
+function section(wrap,it,title,sub,rows,empty){
+  if(!rows.length&&!empty) return;
+  const sec=document.createElement("section");
+  sec.className="rsec";
+  sec.innerHTML='<div class="rsec-head"><h2></h2><span></span></div>'+
+    (sub?'<p class="rsec-sub"></p>':'')+'<div class="rgrid-in"></div>';
+  sec.querySelector("h2").textContent=title;
+  sec.querySelector(".rsec-head span").textContent=rows.length?rows.length+(rows.length===1?" dish":" dishes"):"";
+  if(sub) sec.querySelector(".rsec-sub").textContent=sub;
+  const g=sec.querySelector(".rgrid-in");
+  if(!rows.length){
+    const p=document.createElement("p"); p.className="rsec-empty"; p.textContent=empty;
+    sec.replaceChild(p,g);
+  } else {
+    rows.forEach(([name,desc])=>{
+      const a=document.createElement("a");
+      a.className="rcard"; a.href=yt(name); a.target="_blank"; a.rel="noopener noreferrer";
+      a.innerHTML=art(it)+'<div class="body"><div class="n"></div><div class="d"></div><div class="go">Watch on YouTube →</div></div>';
+      a.querySelector(".n").textContent=name;
+      a.querySelector(".d").textContent=desc;
+      g.appendChild(a);
+    });
+  }
+  wrap.appendChild(sec);
+}
+function goHome(){$("viewRecipes").hidden=true; $("viewMain").hidden=false; window.scrollTo(0,0);}
+$("back").addEventListener("click",goHome);
+$("home").addEventListener("click",goHome);
+
+const grouped={};
+STATES.forEach(([n])=>{
+  const o=document.createElement("option"); o.value=n; o.textContent=n;
+  $("city").appendChild(o);
+});
+$("city").value=city;
+$("city").addEventListener("change",e=>{
+  city=e.target.value;
+  try{localStorage.setItem("mandi.state",city);}catch(err){}
+  goHome(); render();
+});
+MN.forEach((m,i)=>{
+  const b=document.createElement("button"); b.type="button"; b.textContent=m;
+  b.setAttribute("aria-pressed","false");
+  if(i+1===nowMonth) b.classList.add("is-now");
+  b.addEventListener("click",()=>{month=i+1; render();});
+  $("months").appendChild(b);
+});
+
+const legend=$("legend");
+function closeLegend(){legend.hidden=true; $("legendOpen").focus();}
+$("legendOpen").addEventListener("click",()=>{legend.hidden=false; $("legendClose").focus();});
+$("legendClose").addEventListener("click",closeLegend);
+legend.addEventListener("click",e=>{if(e.target===legend) closeLegend();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!legend.hidden) closeLegend();});
+
+render();
+</script>
+
+</body></html>
